@@ -9,7 +9,7 @@ import openpyxl
 account = ""
 password = ""
 
-class WorkSheet:
+class WorkSheet(object):
 	def __init__(self, workbook_name, worksheet_name='sheet1'):
 		self.workbook_name = workbook_name
 		self.worksheet_name = worksheet_name
@@ -155,6 +155,7 @@ if __name__ == '__main__':
 						except:
 							pass
 
+		#4. 写文本
 		for stream in stream_list:
 			try:
 				ws_row += 1
