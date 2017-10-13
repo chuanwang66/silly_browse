@@ -15,3 +15,8 @@ The right way in which a programmer surfs the Internet !
 # C:\Python35\Scripts\pip.exe install lxml
 # C:\Python35\python.exe super_fish2.py
 ```
+
+* 下载喜马拉雅(非付费)音频
+```
+# C:\Python35\python.exe super_fish_ximalaya.py
+```
