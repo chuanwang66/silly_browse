@@ -20,3 +20,4 @@ The right way in which a programmer surfs the Internet !
 ```
 # C:\Python35\python.exe super_fish_ximalaya.py
 ```
+![](https://raw.githubusercontent.com/chuanwang66/silly_browse/master/resources/super_fish_ximalaya.jpg)
