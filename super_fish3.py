@@ -8,6 +8,9 @@ import grequests
 import sys
 import threading
 
+account = u""
+password = u""
+
 ###################################################################################### 测试(begin)
 url_list = [
 	"https://github.com/chuanwang66/silly_player_x",
@@ -223,9 +226,7 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Y', suffix)
 
-
-raw_cookies = "PHPSESSID=th3mc6arehhemma2m46r9745i0"
-def build_cookies():
+def build_cookies(raw_cookies):
 	cookies = {}
 	for line in raw_cookies.split(';'):
 		key, value = line.split('=', 1)
@@ -245,8 +246,24 @@ if __name__ == "__main__":
 	ws.load()
 	ws_row = 0
 
+	#获取cookies
+	post_headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
+	post_data = {u"partner":u"", u"name":account, u"password":password}
+	r = requests.post("http://open.talk-fun.com/backcms/index.php?action=index&sub=login", data=post_data, headers=post_headers)
+
+	raw_cookies = None
+	for key in r.headers.keys():
+		if 'Set-Cookie' in key:
+			raw_cookies = r.headers[key]
+	if not raw_cookies:
+		print('get cookies failed')
+		import sys
+		sys.exit(1)
+	else:
+		print('get cookies ok: %s'%raw_cookies)
+
 	#登录（手工完成，抓包得到cookies填入）
-	cookies = build_cookies()
+	cookies = build_cookies(raw_cookies)
 	
 	# 翻页并抓取
 	page = 0
