@@ -61,10 +61,15 @@ if __name__ == "__main__":
 			#print('%s downloading...'%(m4a_url))
 
 			# 下载音频
-			m4a_file = requests.get(m4a_url, headers = headers, cookies = cookies)
-			with open('%s/%s.m4a'%(dst_folder, m4a_title), 'wb') as f:
-				f.write(m4a_file.content)
-				print('%s downloaded'%(m4a_title))
+			res = requests.get(m4a_url, headers = headers, cookies = cookies) # stream=True
+			if res and res.status_code == requests.codes.ok:
+				with open('%s/%s.m4a'%(dst_folder, m4a_title), 'wb') as f:
+					#f.write(res.content)
+					for chunk in res.iter_content(chunk_size=1024):
+						if chunk:
+							f.write(chunk)
+							#f.flush() #commented by recommendation from J.F.Sebastian
+					print('%s downloaded'%(m4a_title))
 		except Exception as e:
 			print('%s download failed'%(m4a_title))
 			print(e)
