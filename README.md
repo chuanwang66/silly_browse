@@ -9,18 +9,12 @@ The right way in which a programmer surfs the Internet !
 # C:\Python35\python.exe super_fish.py
 ```
 
-* a crawler built by requests & lxml	需手工填入cookie，不呼出浏览器
-```
-# C:\Python35\Scripts\pip.exe install requests
-# C:\Python35\Scripts\pip.exe install lxml
-# C:\Python35\python.exe super_fish2.py
-```
-
 * a crawler built by grequests & lxml	自动获取cookie，不呼出浏览器，支持并发抓取
 ```
+# C:\Python35\Scripts\pip.exe install requests
 # C:\Python35\Scripts\pip.exe install grequests
 # C:\Python35\Scripts\pip.exe install lxml
-# C:\Python35\python.exe super_fish3.py
+# C:\Python35\python.exe super_fish2.py
 ```
 
 * 下载喜马拉雅(非付费)音频

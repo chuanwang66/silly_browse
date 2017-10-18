@@ -4,7 +4,209 @@ from lxml import etree, html
 import openpyxl
 import os
 import requests
+import grequests
 import sys
+import threading
+
+account = u"王川"
+password = u"hadoop"
+
+###################################################################################### 测试(begin)
+url_list = [
+	"https://github.com/chuanwang66/silly_player_x",
+	"https://github.com/chuanwang66/silly_browse",
+	"https://github.com/chuanwang66/easerpc_x",
+	"https://github.com/chuanwang66/kcp",
+	"https://github.com/chuanwang66/test_opencv",
+	"https://github.com/chuanwang66/C-Thread-Pool",
+	"https://github.com/chuanwang66/ngx_stream_upstream_check_module",
+	"https://github.com/chuanwang66/AsyncNet",
+	"https://github.com/chuanwang66/Spider",
+	"https://github.com/chuanwang66/AudioStreaming",
+	"https://github3.com/chuanwang66/fake"
+]
+
+def test_grequests():
+	"""
+		grequests.map 和 grequests.imap 的优势在于并发执行多个网络请求；但仍是阻塞等待
+	"""
+	result = {}
+
+	def response_hook(r, **kwargs):
+		result[r.url] = True
+		print('%s ==> %d'%(r.url, len(r.content)))
+		return r
+
+	def response_callback(r, **kwargs):
+		print('%s ==> %d'%(r.url, len(r.content)))
+		return r
+
+	def exception_handler(r, exception):
+		print('%s ==> %s'%(r.url, exception))
+		return exception
+
+	#map    并发执行，阻塞等待 (立即执行)
+	#imap   并发执行，阻塞等待 (返回生成器，使用时开始执行)
+	#send	并发执行，异步不等待
+	map_imap_pool = 3
+	if map_imap_pool == 1:
+		#grequests.map: waits for all requests to finish, then returns the ordered data
+		reqs = [grequests.get(url, hooks={'response': [response_hook]}, timeout=5.000) for url in url_list]
+		reps = grequests.map(reqs, size=5, exception_handler=exception_handler)
+
+		print('here')
+	elif map_imap_pool == 2:
+		#grequests.imap: is similar to map but returns a generator
+		reqs = [grequests.get(url, callback=response_callback, timeout=5.000) for url in url_list]
+		for r in grequests.imap(reqs, size=10):
+			pass
+
+		print('here')
+	elif map_imap_pool == 3:
+		#但这种方式不能设置exception_handler
+		for url in url_list:
+			req = grequests.get(url, hooks=dict(response=response_hook), timeout=5.000)
+			job = grequests.send(req, grequests.Pool(10))
+
+		print('here')
+
+		import time
+		time.sleep(20.0)
+	else:
+		pass
+###################################################################################### 测试(end)
+
+# get请求1个url
+# max_retries: 若第1次请求失败，再尝试max_retries次
+# verbose: 输出提示信息
+# 返回: 成功则返回requests.Response; 失败则返回None
+#
+# 注: 本函数阻塞等待
+# 注：本函数作用在于“可以重试”
+def requests_get_url(url, cookies={}, max_retries=3, verbose=False):
+	r = None
+
+	num_retries = 0
+	while num_retries <= max_retries:
+		try:
+			r = requests.get(url, cookies=cookies, timeout=10.000)
+			break
+		except requests.exceptions.ConnectTimeout:
+			if verbose: print('connect timeout')
+			num_retries += 1
+		except requests.exceptions.ConnectionError:
+			if verbose: print('connect error')
+			num_retries += 1
+		except requests.exceptions.Timeout:
+			if verbose: print('timeout')
+			num_retries += 1
+		except requests.exceptions.TooManyRedirects:
+			if verbose: print('too many redirects')
+			num_retries += 1
+		except requests.exceptions.RequestException as e:
+			if verbose: print(e)
+			num_retries += 1
+		if verbose: print('retry: %d'%(num_retries))
+	return r
+
+def test_requests_get_url():
+	r = requests_get_url(url_list[0], cookies={}, max_retries=3, verbose=True)
+
+	if r: print(len(r.content))
+	else: print(r)
+
+# get批量请求url_list
+# url_list: 请求url列表
+# verbose: 输出提示信息
+# 返回: ok_result(url -> requests.models.Response), fail_result(url -> Exception)
+#
+# 注: 本函数仍阻塞等待
+# 注：本函数作用在于“可以并发请求多个url”
+def grequests_get_urls(url_list, cookies={}, max_retries=3, verbose=False):
+	ok_result = {}
+	fail_result = {}
+
+	def response_hook(r, **kwargs):
+		ok_result[r.url] = r
+		return r
+
+	def exception_handler(r, exception):
+		fail_result[r.url] = exception
+		return exception
+
+	num_retries = 0
+	while num_retries <= max_retries:
+		reqs = [grequests.get(url, cookies=cookies, hooks={'response': [response_hook]}, timeout=5.000) for url in url_list]
+		reps = grequests.map(reqs, size=20, exception_handler=exception_handler)
+
+		if not fail_result:
+			break
+		else:
+			num_retries += 1
+
+			url_list = []
+			for url in fail_result.keys():
+				url_list.append(url)
+
+			if verbose:
+				print('retry: %d'%(num_retries))
+				for url in url_list:
+					print('\t%s'%(url))
+
+	return ok_result, fail_result
+
+def test_grequests_get_urls():
+	ok_result, fail_result = grequests_get_urls(url_list, max_retries=3, verbose=True)
+
+	print()
+	if not ok_result:
+		print('ok_result: ', ok_result)
+	else:
+		print('ok_result: ')
+		for url in ok_result.keys():
+			r = ok_result[url]
+			print(url, "===>", len(r.content))
+
+	if not fail_result:
+		print('fail_result: ', fail_result)
+	else:
+		print('fail_result: ')
+		for url in fail_result.keys():
+			print(url, "===>", fail_result[url])
+
+def check_connection(url):
+    try:
+        request = requests.head(url)
+        if request.status_code == 200:
+            print('Connection ok...')
+            return True
+        elif request.status_code == 301:
+            print('Connection redirect')
+            return True
+        else:
+            print('Error connecting')
+            return False
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        print('{} can not be reached, check your connection and retry later'.format(url))
+        return False
+    except (requests.exceptions.HTTPError, requests.exceptions.TooManyRedirects):
+        print('There is an issue with the url, {}, confirm it, or retry later'.format(url))
+        return False
+
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','K','M','G','T','P','E','Z']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Y', suffix)
+
+def build_cookies(raw_cookies):
+	cookies = {}
+	for line in raw_cookies.split(';'):
+		key, value = line.split('=', 1)
+		key, value = key.strip('\r\n\t '), value.strip('\r\n\t ')
+		cookies[key] = value
+	return cookies
 
 class WorkSheet(object):
 	def __init__(self, workbook_name, worksheet_name='sheet1'):
@@ -51,42 +253,11 @@ class WorkSheet(object):
 	def close(self):
 		self.wb.close()
 
-def sizeof_fmt(num, suffix='B'):
-    for unit in ['','K','M','G','T','P','E','Z']:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, 'Y', suffix)
-
-def check_connection(url):
-    try:
-        request = requests.head(url)
-        if request.status_code == 200:
-            print('Connection ok...')
-            return True
-        elif request.status_code == 301:
-            print('Connection redirect')
-            return True
-        else:
-            print('Error connecting')
-            return False
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        print('{} can not be reached, check your connection and retry later'.format(url))
-        return False
-    except (requests.exceptions.HTTPError, requests.exceptions.TooManyRedirects):
-        print('There is an issue with the url, {}, confirm it, or retry later'.format(url))
-        return False
-
-raw_cookies = "Hm_lvt_37446e3c6b7cb9f5f065c0679a16722c=1493854771; Hm_lvt_9b54ef29e6bd23d6bfe22f68267014f9=1493854771; uid=open_100116; bid=0; roomid=552160; nickname=%E5%8A%A9%E6%95%99; t=1506678295; token=ca2dc3f6ccfb823f4ec80e9080a7e87a; access_token=wgjNkhzM0UzY2kTMxMTYiBjNxAjZjJWMzUGM1MzYmVDf8xXfiAjNxITN1IiOiUWbh5mciwCM6ISYiwCM6ICZpdmIsAjOiQWafV2cyV3bjJCLiIiOiIXY0FmdhJCLwojIyVGZuV2ZiwSM0IjM0UzNwUTM6ISZylGc4VmIsEDNygzN2YDM1EjOiUWbpR3ZlJnIs01W6Iic0RXYiwiIulWbkFmI6ISZs9mciwSO0MjN0ITM6ICZphnIsISO1UjN1xVOhJTN1xlI6ISZtFmbrNWauJCLwojIklmYiwiI2ETMwATMf5WZw9mI6ICZpVnIsAjNxITN1ojIklWbv9mciwCMyojIklGciwCMyojIkl2XyVmb0JXYwJye; PHPSESSID=jv5r9ohqgk5gdae58fkr3ap8p3"
-def build_cookies():
-	cookies = {}
-	for line in raw_cookies.split(';'):
-		key, value = line.split('=', 1)
-		key, value = key.strip('\r\n\t '), value.strip('\r\n\t ')
-		cookies[key] = value
-	return cookies
-
 if __name__ == "__main__":
+	#test_grequests()
+	#test_requests_get_url()
+	#test_grequests_get_urls()
+
 	ws = WorkSheet(workbook_name='super_fish.xlsx', worksheet_name='live_info')
 	if ws.exists():
 		ws.remove()
@@ -94,8 +265,23 @@ if __name__ == "__main__":
 	ws.load()
 	ws_row = 0
 
-	#登录（手工完成，抓包得到cookies填入）
-	cookies = build_cookies()
+	##登录, 获取cookies
+	post_headers = {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
+	post_data = {u"partner":u"", u"name":account, u"password":password}
+	r = requests.post("http://open.talk-fun.com/backcms/index.php?action=index&sub=login", data=post_data, headers=post_headers)
+
+	raw_cookies = None
+	for key in r.headers.keys():
+		if 'Set-Cookie' in key:
+			raw_cookies = r.headers[key]
+	if not raw_cookies:
+		print('get cookies failed')
+		import sys
+		sys.exit(1)
+	else:
+		print('get cookies ok: %s'%raw_cookies)
+
+	cookies = build_cookies(raw_cookies)
 	
 	# 翻页并抓取
 	page = 0
@@ -104,7 +290,8 @@ if __name__ == "__main__":
 		print('try page: %d'%(page))
 
 		#1. 翻开新一页
-		res = requests.get('http://open.talk-fun.com/backcms/index.php?action=live&pid=27&mod=yesterday&page=%d'%(page), cookies=cookies)
+		res = requests_get_url('http://open.talk-fun.com/backcms/index.php?action=live&pid=27&mod=yesterday&page=%d'%(page), cookies=cookies, max_retries=3)
+		#res = requests.get('http://open.talk-fun.com/backcms/index.php?action=live&pid=27&mod=yesterday&page=%d'%(page), cookies=cookies)
 		html = etree.HTML(res.text)
 
 		#sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='gb18030')
@@ -141,13 +328,15 @@ if __name__ == "__main__":
 						f.write('room_name: %s\n'%(room_name))
 
 		#3. 对每一条记录再点进去看“最高同时在线人数”
+		"""
 		stream_peak_dict = {}
 		for stream in stream_list:
 			visitor_link = stream['visitor_link']
 			if not visitor_link:
 				stream_peak_dict[stream['stream_id']] = 0
 			else:
-				res = requests.get(visitor_link, cookies=cookies)
+				res = requests_get_url(visitor_link, cookies=cookies, max_retries=3)
+				#res = requests.get(visitor_link, cookies=cookies)
 				html = etree.HTML(res.text)
 
 				for box in html.xpath("//div[@class='box']"):
@@ -158,6 +347,35 @@ if __name__ == "__main__":
 							stream_peak_dict[stream['stream_id']] = int(num)
 						except:
 							pass
+		"""
+
+		#3. 并发请求: 对每一条记录点击去看“最高同时在线人数”
+		stream_peak_dict = {}
+		link_stream_dict = {}
+		visitor_links = []
+		for stream in stream_list:
+			visitor_link = stream['visitor_link']
+			if not visitor_link:
+				stream_peak_dict[stream['stream_id']] = 0
+			else:
+				visitor_links.append(visitor_link)
+				link_stream_dict[visitor_link] = stream['stream_id']
+
+		ok_result, fail_result = grequests_get_urls(visitor_links, cookies=cookies, max_retries=3)
+		if ok_result:
+			for url in ok_result.keys():
+				html = etree.HTML(ok_result[url].text)
+
+				for box in html.xpath("//div[@class='box']"):
+					num = box.xpath(".//span[@class='num']")[0].text.strip('\r\n\t ')
+					caller = box.xpath(".//span[@class='caller']")[0].text.strip('\r\n\t ')
+					if '最高同时在线人数' in caller:
+						try:
+							stream_peak_dict[link_stream_dict[url]] = int(num)
+						except:
+							pass
+		if fail_result:
+			print(fail_result)
 
 		#4. 写文本
 		for stream in stream_list:
