@@ -109,12 +109,6 @@ def requests_get_url(url, cookies={}, max_retries=3, verbose=False):
 		if verbose: print('retry: %d'%(num_retries))
 	return r
 
-def test_requests_get_url():
-	r = requests_get_url(url_list[0], cookies={}, max_retries=3, verbose=True)
-
-	if r: print(len(r.content))
-	else: print(r)
-
 # get批量请求url_list
 # url_list: 请求url列表
 # verbose: 输出提示信息
@@ -154,25 +148,6 @@ def grequests_get_urls(url_list, cookies={}, max_retries=3, verbose=False):
 					print('\t%s'%(url))
 
 	return ok_result, fail_result
-
-def test_grequests_get_urls():
-	ok_result, fail_result = grequests_get_urls(url_list, max_retries=3, verbose=True)
-
-	print()
-	if not ok_result:
-		print('ok_result: ', ok_result)
-	else:
-		print('ok_result: ')
-		for url in ok_result.keys():
-			r = ok_result[url]
-			print(url, "===>", len(r.content))
-
-	if not fail_result:
-		print('fail_result: ', fail_result)
-	else:
-		print('fail_result: ')
-		for url in fail_result.keys():
-			print(url, "===>", fail_result[url])
 
 def check_connection(url):
     try:
