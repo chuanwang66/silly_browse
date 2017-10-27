@@ -20,7 +20,7 @@ The right way in which a programmer surfs the Internet !
 
 * super_fish2_session.py 把super_fish2.py改造成session方式实现
 
-* super_fish3.py 尝试用 "线程池+requests"方式 实现 非阻塞网络IO
+* super_fish3.py 尝试用 "线程池+requests"方式 实现 非阻塞网络IO  
   在开发中，我们往往更需要的是这种 "非阻塞IO"，而不是 "并发IO"(除非你在做爬虫)
 
 * 下载喜马拉雅(非付费)音频
