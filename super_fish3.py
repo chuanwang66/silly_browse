@@ -1,6 +1,7 @@
 """
     线程池 + requests 实现 “异步”!
     参考资料: https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor-example (线程池)
+    参考资料: https://stackoverflow.com/questions/14245989/python-requests-non-blocking
 """
 
 import concurrent.futures
