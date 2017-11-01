@@ -25,15 +25,31 @@ def load_url(url, timeout):
         return conn.read()
 
 # We can use a with statement to ensure threads are cleaned up promptly
-with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=5, thread_name_prefix='citrus_requests_thread') as executor:
     # Start the load operations and mark each future with its URL
     future_to_url = {executor.submit(load_url, url, 60): url for url in URLS}
     
     print('here')
     import time
-    time.sleep(10)  #不用等待IO，你放心去做其他的事情!
+    time.sleep(5)  #不用等待IO，你放心去做其他的事情!
     print('here2')
 
+    """
+    concurrent.futures.as_completed(fs, timeout=None):
+        An iterator over the given futures that yields each as it completes.
+
+        Args:
+            fs: The sequence of Futures (possibly created by different Executors) to iterate over.
+            timeout: The maximum number of seconds to wait. If None, then there is no limit on the wait time.
+
+        Returns:
+            An iterator that yields the given Futures as they complete (finished or cancelled).
+            If any given Futures are duplicated, they will be returned once.
+
+        Raises:
+            TimeoutError: If the entire result iterator could not be generated before the given timeout.
+
+    """
     for future in concurrent.futures.as_completed(future_to_url):
         url = future_to_url[future]
         try:

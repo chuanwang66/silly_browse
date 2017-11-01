@@ -8,8 +8,8 @@ import grequests
 import sys
 import threading
 
-account = u"王川"
-password = u"hadoop"
+account = u""
+password = u""
 
 ###################################################################################### 测试(begin)
 url_list = [
